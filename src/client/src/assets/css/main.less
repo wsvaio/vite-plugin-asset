@@ -1,0 +1,22 @@
+html, body, #app {
+	height: 100%;
+}
+
+
+.drop-shadow {
+	--size: 1px 1px 1px;
+
+	filter: drop-shadow(var(--size) rgb(127 127 127 / 50%));
+
+	&.sm {
+		--size: 1px 1px 1px;
+	}
+
+	&.md {
+		--size: 2px 2px 2px;
+	}
+
+	&.lg {
+		--size: 4px 4px 4px;
+	}
+}
