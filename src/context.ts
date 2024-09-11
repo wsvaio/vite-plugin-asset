@@ -6,5 +6,5 @@ export const context: {
   options: Options;
   config?: ResolvedConfig;
 } = {
-  options: { paths: [] },
+  options: { paths: [], excludes: ["node_modules"] },
 };

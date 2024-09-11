@@ -3,7 +3,7 @@ import c from "picocolors";
 import sirv from "sirv";
 import type { Plugin } from "vite";
 import { context } from "./context";
-import { getFile, getFiles, resolvePaths } from "./service";
+import { getFile, getFiles, openFile, removeFile, renameFile, resolvePaths } from "./services";
 import { DIR_CLIENT } from "./utils";
 
 export default ({ path = [] }: { path?: string | string[] } = {}): Plugin => ({
@@ -13,7 +13,6 @@ export default ({ path = [] }: { path?: string | string[] } = {}): Plugin => ({
   async configResolved(config) {
     context.config = config;
     context.options.paths = await resolvePaths(path);
-    console.log(context.options);
   },
   async configureServer(server) {
     const { config, options: { paths } } = context;
@@ -43,6 +42,24 @@ export default ({ path = [] }: { path?: string | string[] } = {}): Plugin => ({
       event: "vite-plugin-asset:get",
       data: await getFile(ev),
     }));
+
+    // 客户端更改某个文件名称
+    server.ws.on("vite-plugin-asset:rename", async ev => server.ws.send({
+      type: "custom",
+      event: "vite-plugin-asset:get",
+      data: await renameFile(ev) && await getFile({ ...ev, name: ev.newname }),
+    }));
+
+    // 客户端更改某个文件名称
+    server.ws.on("vite-plugin-asset:delete", async ev => await removeFile(ev).then(() => {
+      server.ws.send({
+        type: "custom",
+        event: "vite-plugin-asset:delete",
+      });
+    }));
+
+    // 客户端打开某个文件
+    server.ws.on("vite-plugin-asset:open", async ev => await openFile(ev));
 
     const base = config?.base || server.config.base;
     // 启动 client

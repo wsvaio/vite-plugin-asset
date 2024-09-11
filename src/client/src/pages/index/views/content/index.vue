@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { UnwrapPromise } from "@/utils";
-import type { getFiles } from "~/service";
+import type { getFiles } from "~/services";
 
 const { data } = defineProps<{
   data: UnwrapPromise<ReturnType<typeof getFiles>>;

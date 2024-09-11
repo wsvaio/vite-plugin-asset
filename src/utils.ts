@@ -7,39 +7,17 @@ export const DIR_DIST = typeof __dirname !== "undefined"
 
 export const DIR_CLIENT = resolve(DIR_DIST, "../dist/client");
 
-// 路径是否存在
-// export async function resolvePath(path: string) {
-//   if (path.startsWith("/")) {
-//     if (await stat(`.${path}`).catch(() => { }))
-//       return `.${path}`;
-//     if (await stat(path).catch(error => console.warn(error)))
-//       return path;
-//   }
-//   else {
-//     if (await stat(path).catch(error => console.warn(error)))
-//       return path;
-//   }
-// }
+export function locateCodeSnippets(code: string, snippets: string, position = 0) {
+  const result: { row: number; column: number }[] = [];
 
-// 别名解析
-// export function resolveAlias(path: string, alias: Alias[]) {
-//   path = normalizePath(path);
-//   const finded = alias.find(item =>
-//     // 针对于uniapp，replacement竟然可能为一个函数（无视掉并无影响）
-//     typeof item.replacement === "string"
-//     && (typeof item.find == "string"
-//       ? path.startsWith(item.find)
-//       : item.find.test(path)));
-//   return finded ? path.replace(finded.find, finded.replacement) : path;
-// }
+  const index = code.indexOf(snippets, position);
+  if (index !== -1) {
+    const slicestr = code.slice(0, index + 1).split("\n");
+    const row = slicestr.length;
+    const column = slicestr.toReversed()[0].length;
+    result.push({ row, column });
+    result.push(...locateCodeSnippets(code, snippets, index + snippets.length));
+  }
 
-// export function resolveAlias(path: string, alias: Alias[]) {
-//   path = normalizePath(path);
-//   const finded = alias.find(item =>
-//     // 针对于uniapp，replacement竟然可能为一个函数（无视掉并无影响）
-//     typeof item.replacement === "string"
-//     && (typeof item.find == "string"
-//       ? path.startsWith(item.find)
-//       : item.find.test(path)));
-//   return finded ? path.replace(finded.find, finded.replacement) : path;
-// }
+  return result;
+}

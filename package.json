@@ -82,6 +82,7 @@
     }
   },
   "dependencies": {
+    "fast-glob": "^3.3.2",
     "filesize": "^10.1.6",
     "mime": "^4.0.4",
     "picocolors": "^1.0.1",
