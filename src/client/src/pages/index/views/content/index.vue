@@ -2,15 +2,15 @@
 import type { UnwrapPromise } from "@/utils";
 import type { getFiles } from "~/services";
 
-const { data } = defineProps<{
+const { data, checks } = defineProps<{
   data: UnwrapPromise<ReturnType<typeof getFiles>>;
+  checks: { name: string; path: string }[];
 }>();
 
 // getFile
 defineEmits<{
   iconClick: [path: string, name: string];
 }>();
-
 let expandedNames = $ref<string[] | null>(null);
 watch(() => data, () => expandedNames ??= data.map(item => item.path));
 </script>
@@ -26,7 +26,7 @@ watch(() => data, () => expandedNames ??= data.map(item => item.path));
         <n-flex v-if="item.names.length">
           <n-tooltip v-for="sub in item.names" trigger="hover" placement="bottom">
             <template #trigger>
-              <n-button h="!auto" p="!0" @click="$emit('iconClick', item.path, sub)">
+              <n-button h="!auto" p="!0" :type="checks.some(check => check.name == sub && check.path == item.path) ? 'primary' : 'default'" @click="$emit('iconClick', item.path, sub)">
                 <preview-icon :url="resolvePath({ path: item.path, name: sub })" />
               </n-button>
             </template>

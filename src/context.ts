@@ -1,3 +1,4 @@
+import type { Ignore } from "ignore";
 import type { ResolvedConfig } from "vite";
 import type { Options } from "./types";
 
@@ -5,6 +6,7 @@ import type { Options } from "./types";
 export const context: {
   options: Options;
   config?: ResolvedConfig;
+  ignore?: Ignore;
 } = {
-  options: { paths: [], excludes: ["node_modules"] },
+  options: { paths: [], ignores: [] },
 };

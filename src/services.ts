@@ -1,12 +1,13 @@
+import type { ResolvedPath } from "./types";
 import { exec } from "node:child_process";
 import { readdir, readFile, rename, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { filesize } from "filesize";
+import ignore from "ignore";
 import mime from "mime";
 import { normalizePath } from "vite";
 import { context } from "./context";
 import { locateCodeSnippets } from "./utils";
-import type { ResolvedPath } from "./types";
 
 // 解析alias
 export async function resolvePaths(path: string | string[]) {
@@ -48,85 +49,82 @@ export async function getFile({ path, name }: { path: string; name: string }) {
 }
 
 // 扁平化列出监听的文件夹下所有文件
-export async function getFiles({ name = [], }: { name?: string | string[] } = {}) {
+export async function getFiles({ name = [], isused }: { name?: string | string[]; isused?: boolean } = {}) {
   const { options } = context;
+  const names = Array.isArray(name) ? name : [name];
+  const result: { path: string; names: string[] }[] = [];
 
-  const r = async (path: string | string[]) => {
-    const paths = Array.isArray(path) ? path : [path];
-    const names = Array.isArray(name) ? name : [name];
-    const result: { path: string; names: string[] }[] = [];
+  await deepFile(options.paths.map(item => item.path), async (path, name) => {
+    // name过滤
+    if (names.length && !names.some(_name => name.includes(_name)))
+      return;
 
-    for (const path of paths) {
-      const item = { path, names: [] as string[] };
-      const items: { path: string; names: string[] }[] = [];
+    const finded = result.find(item => item.path == path);
+    if (finded)
+      finded.names.push(name);
+    else
+      result.push({ path, names: [name] });
+  });
 
-      const readed = await readdir(path).catch(error => {
-        console.warn(error);
-        return [];
-      });
+  // 过滤 是否 被使用
+  if (isused !== undefined) {
+    const names: string[] = [];
+    await deepFile(".", async (path, name) => {
+      path = join(path, name);
+      // == null，可能是vue等文件
+      if (mime.getType(path) != null && !mime.getType(path)?.startsWith("text"))
+        return;
+      const readed = await readFile(path, { encoding: "utf8" });
+      result.forEach(item => names.push(...item.names.filter(sub => readed.includes(sub))));
+    });
+    result.forEach(item => item.names = item.names.filter(sub => isused ? names.includes(sub) : !names.includes(sub)));
+  }
 
-      for (const name of readed) {
-        // 忽略隐藏文件
-        if (name.startsWith("."))
-          continue;
-
-        const stats = await stat((join(path, name)));
-
-        if (stats.isDirectory()) {
-          items.push(...await r(join(path, name)));
-        }
-
-        if (stats.isFile()) {
-          if (names.length && !names.some(_name => name.includes(_name)))
-            continue;
-          item.names.push(name);
-        }
-      }
-
-      if (item.names.length)
-        result.push(item);
-      result.push(...items);
-    }
-    return result;
-  };
-
-  return await r(options.paths.map(item => item.path));
+  return result.filter(item => item.names.length);
 }
 
 // 扫描内容含有关键字的文件
 export async function scanFile(key: string) {
-  const { options: { excludes } } = context;
-  const r = async (path: string) => {
-    if (excludes.some(item => typeof item === "string"
-      ? path.startsWith(item)
-      : item.test(path))) {
-      return [];
+  const result: { path: string; positions: { row: number; column: number }[] }[] = [];
+  await deepFile(".", async (path, name) => {
+    path = join(path, name);
+    // == null，可能是vue等文件
+    if (mime.getType(path) != null && !mime.getType(path)?.startsWith("text"))
+      return;
+    const readed = await readFile(path, { encoding: "utf8" });
+    const positions = locateCodeSnippets(readed, key);
+    if (positions.length) {
+      result.push({
+        path,
+        positions,
+      });
     }
-    const result: { path: string; positions: { row: number; column: number }[] }[] = [];
+  });
+  return result;
+}
+
+// 递归遍历文件
+export async function deepFile(path: string | string[], cb: (path: string, name: string) => Promise<void>) {
+  const paths = Array.isArray(path) ? path : [path];
+  const r = async (path: string) => {
+    if (await isIgnore(path))
+      return;
     const readed = await readdir(path, { withFileTypes: true });
     for (const item of readed) {
       if (item.isDirectory()) {
-        result.push(...await r(join(item.parentPath, item.name)));
+        await r(join(item.parentPath, item.name));
       }
       if (item.isFile()) {
-        const path = join(item.parentPath, item.name);
-        // == null，可能是vue等文件
-        // if (mime.getType(path) != null && !mime.getType(path)?.startsWith("text"))
-        //   continue;
-        const readed = await readFile(path, { encoding: "utf8" });
-        const positions = locateCodeSnippets(readed, key);
-        if (positions.length) {
-          result.push({
-            path,
-            positions,
-          });
-        }
+        if (await isIgnore(join(item.parentPath, item.name)))
+          continue;
+        await cb(item.parentPath, item.name);
       }
     }
-    return result;
   };
 
-  return await r(".");
+  for (const path of paths) {
+    await r(path);
+  }
 }
 
 // 文件改名
@@ -136,15 +134,28 @@ export async function renameFile({ path, name, newname }: { path: string; name: 
 }
 
 // 删除文件
-export async function removeFile({ path, name }: { path: string; name: string }) {
-  await rm(join(path, name));
+export async function removeFile(ev: { path: string; name: string } | { path: string; name: string }[]) {
+  ev = Array.isArray(ev) ? ev : [ev];
+  for (const { path, name } of ev) await rm(join(path, name));
   return true;
 }
 
 // 打开文件
-export async function openFile({ path, row, column }: { path: string; row: number; column: number }) {
+export async function openFile({ path, row = 0, column = 0 }: { path: string; row?: number; column?: number }) {
   const { config } = context;
   if (!config?.root)
     return;
   exec(`code -g '${join(config?.root, path)}:${row}:${column}'`);
+}
+
+// 判断文件是否被忽略
+export async function isIgnore(path: string) {
+  if (!context.ignore) {
+    context.ignore = ignore({ allowRelativePaths: true })
+      .add(await readFile(".gitignore", { encoding: "utf8" }).then(data => data.split("\n")))
+      // .add(".git")
+      .add(".?*")
+      .add(context.options.ignores);
+  }
+  return context.ignore.ignores(path);
 }

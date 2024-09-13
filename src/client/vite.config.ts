@@ -31,6 +31,7 @@ export default defineConfig({
         {
           "naive-ui": ["useDialog", "useMessage", "useNotification", "useLoadingBar"],
         },
+        "@vueuse/core"
       ],
       // resolvers: [NaiveUiResolver()],
       vueTemplate: true,

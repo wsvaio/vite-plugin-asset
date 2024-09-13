@@ -84,3 +84,6 @@ dist
 
 public
 playground/src/assets
+
+auto-import.d.ts
+auto-components.d.ts

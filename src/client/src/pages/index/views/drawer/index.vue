@@ -36,16 +36,28 @@ defineExpose({
         <n-button
           type="primary" text tag="a" ml=".5em"
           class="text-1em" download
-          :href="resolvePath({ path: data?.path, name: data?.name })"
+          :href="resolvePath({ path: data?.path, name: data?.name })" title="下载"
         >
           <div class="i-ph:download" />
         </n-button>
 
-        <n-popconfirm :show-icon="false" @positive-click="$emit('rename', { path: data?.path, name: data?.name, newname: name }), name = ''">
+        <n-button
+          ml=".25em" class="text-1em" type="primary" text
+          tag="a" title="访达"
+          @click="$emit('open', { path: `${data?.path}/${data?.name}` })"
+        >
+          <div class="i-ion:open-outline" />
+        </n-button>
+
+        <n-popconfirm
+          :show-icon="false"
+          @positive-click="$emit('rename', { path: data?.path, name: data?.name, newname: name }), name = ''"
+        >
           <template #trigger>
             <n-button
               ml=".25em" class="text-1em" type="primary" text
-              tag="a" @click="name = data?.name || ''"
+              tag="a" title="改名"
+              @click="name = data?.name || ''"
             >
               <div class="i-ph:note-pencil" />
             </n-button>
@@ -57,7 +69,7 @@ defineExpose({
           <template #trigger>
             <n-button
               ml=".25em" class="text-1em" type="primary" text
-              tag="a"
+              tag="a" title="删除"
             >
               <div class="i-ph:trash" />
             </n-button>
@@ -104,55 +116,55 @@ defineExpose({
         </n-descriptions-item>
       </n-descriptions>
 
-      <n-tabs type="line" animated mt="auto" aspect-ratio="1/1">
-        <n-tab-pane name="示例" tab="示例">
-          <n-list hoverable clickable show-divider>
-            <n-list-item @click="copy(codeImport(data?.rawpath, data?.name))">
-              <n-code :code="codeImport(data?.rawpath, data?.name)" language="javascript" word-wrap />
-            </n-list-item>
-            <n-list-item @click="copy(codeDownload(data?.rawpath, data?.name))">
-              <n-code :code="codeDownload(data?.rawpath, data?.name)" language="xml" word-wrap />
-            </n-list-item>
-            <n-list-item v-if="data?.type?.startsWith('image')" @click="copy(codeImage(data?.rawpath, data?.name))">
-              <n-code :code="codeImage(data?.rawpath, data?.name)" language="xml" word-wrap />
-            </n-list-item>
-            <n-list-item v-if="data?.type?.startsWith('video')" @click="codeVideo(codeImage(data?.rawpath, data?.name))">
-              <n-code :code="codeVideo(data?.rawpath, data?.name)" language="xml" word-wrap />
-            </n-list-item>
-            <n-list-item v-if="data?.type?.startsWith('audio')" @click="codeAudio(codeImage(data?.rawpath, data?.name))">
-              <n-code :code="codeAudio(data?.rawpath, data?.name)" language="xml" word-wrap />
-            </n-list-item>
-          </n-list>
-        </n-tab-pane>
+      <templated
+        :data="data?.use?.flatMap(item => item.positions.map(sub => ({ path: item.path, ...sub })))"
+        #="uselist"
+      >
+        <n-tabs type="line" animated mt="auto" aspect-ratio="1/1">
+          <n-tab-pane name="示例" tab="示例">
+            <n-list hoverable clickable show-divider>
+              <n-list-item @click="copy(codeImport(data?.rawpath, data?.name))">
+                <n-code :code="codeImport(data?.rawpath, data?.name)" language="javascript" word-wrap />
+              </n-list-item>
+              <n-list-item @click="copy(codeDownload(data?.rawpath, data?.name))">
+                <n-code :code="codeDownload(data?.rawpath, data?.name)" language="xml" word-wrap />
+              </n-list-item>
+              <n-list-item v-if="data?.type?.startsWith('image')" @click="copy(codeImage(data?.rawpath, data?.name))">
+                <n-code :code="codeImage(data?.rawpath, data?.name)" language="xml" word-wrap />
+              </n-list-item>
+              <n-list-item
+                v-if="data?.type?.startsWith('video')"
+                @click="codeVideo(codeImage(data?.rawpath, data?.name))"
+              >
+                <n-code :code="codeVideo(data?.rawpath, data?.name)" language="xml" word-wrap />
+              </n-list-item>
+              <n-list-item
+                v-if="data?.type?.startsWith('audio')"
+                @click="codeAudio(codeImage(data?.rawpath, data?.name))"
+              >
+                <n-code :code="codeAudio(data?.rawpath, data?.name)" language="xml" word-wrap />
+              </n-list-item>
+            </n-list>
+          </n-tab-pane>
 
-        <n-tab-pane name="依赖" tab="依赖">
-          <template #tab>
-            <n-badge :value="data?.use?.length" color="grey" show-zero>
-              依赖
-            </n-badge>
-          </template>
-          <n-list v-if="data?.use?.length" hoverable clickable show-divider>
-            <n-list-item v-for="item in data?.use" @click="$emit('open', { path: item.path, ...item.positions[0] })">
-              {{ item.path }}
-
-              <template #suffix>
-                <n-badge :value="item.positions?.length" color="grey" whitespace="nowrap">
-                  <n-tooltip v-if="item.positions?.length">
-                    <template #trigger>
-                      {{ `${item.positions?.[0].row}:${item.positions?.[0].column}` }}
-                    </template>
-                    {{ item.positions.map(({ row, column }) => `${row}:${column}`).join(", ") }}
-                  </n-tooltip>
-                  <template v-else>
-                    {{ item.positions.map(({ row, column }) => `${row}:${column}`).join(", ") }}
-                  </template>
-                </n-badge>
-              </template>
-            </n-list-item>
-          </n-list>
-          <n-empty v-else />
-        </n-tab-pane>
-      </n-tabs>
+          <n-tab-pane name="使用" tab="使用">
+            <template #tab>
+              <n-badge :value="uselist?.length" color="grey" show-zero>
+                使用
+              </n-badge>
+            </template>
+            <n-list v-if="uselist?.length" hoverable clickable show-divider>
+              <n-list-item v-for="item in uselist" @click="$emit('open', item)">
+                {{ item.path }}
+                <template #suffix>
+                  <span whitespace="nowrap">{{ `${item.row}:${item.column}` }}</span>
+                </template>
+              </n-list-item>
+            </n-list>
+            <n-empty v-else />
+          </n-tab-pane>
+        </n-tabs>
+      </templated>
     </n-drawer-content>
   </n-drawer>
 </template>
