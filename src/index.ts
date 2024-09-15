@@ -1,5 +1,6 @@
 import type { Plugin } from "vite";
 import { join } from "node:path";
+import { debounce } from "@wsvaio/utils";
 import c from "picocolors";
 import sirv from "sirv";
 import { context } from "./context";
@@ -22,13 +23,13 @@ export default ({ path = [], ignores = [] }: { path?: string | string[]; ignores
     paths.forEach(item => server.watcher.add(item.path));
 
     // 文件发生改动 告诉客户端 让客户端执行刷新（主要是附带筛选参数）
-    server.watcher.on("all", async () => {
+    server.watcher.on("all", debounce(async () => {
       server.ws.send({
         type: "custom",
         event: "vite-plugin-asset:update",
         // 这里不附带data，客户端判断有无data来区分
       });
-    });
+    }, 100));
 
     // 客户端主动刷新 附带筛选条件
     server.ws.on("vite-plugin-asset:update", async ev => server.ws.send({
@@ -80,7 +81,7 @@ export default ({ path = [], ignores = [] }: { path?: string | string[]; ignores
     const _print = server.printUrls;
     server.printUrls = () => {
       let host = `${config?.server?.https ? "https" : "http"}://localhost:${config?.server.port || "80"}`;
-      const url = server.resolvedUrls?.network[0] || server.resolvedUrls?.local[0];
+      const url = server.resolvedUrls?.local[0] || server.resolvedUrls?.network[0];
       if (url) {
         const u = new URL(url);
         host = `${u.protocol}//${u.host}`;

@@ -82,7 +82,10 @@ defineExpose({
         <preview class="aspect-ratio-16/9 w-full" :url="resolvePath({ path: data?.path, name: data?.name })" />
       </n-card>
 
-      <n-descriptions :columns="1" label-placement="left" label-class="font-bold" mt="1em">
+      <n-descriptions
+        :columns="1" label-placement="left" label-class="font-bold" mt="1.5em"
+        mb=".5em"
+      >
         <n-descriptions-item label="引用地址">
           <span>{{ `${data?.rawpath}/${data?.name}` }}</span>
           <n-button
