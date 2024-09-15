@@ -1,7 +1,7 @@
 {
   "name": "vite-plugin-asset",
   "type": "module",
-  "version": "0.0.1-beta.3",
+  "version": "0.0.1-beta.4",
   "packageManager": "pnpm@9.7.1",
   "description": "Manage your assets of Vite plugins",
   "author": "wsvaio <wsvaio@qq.com>",
