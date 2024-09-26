@@ -30,13 +30,14 @@ import VitePluginAsset from "vite-plugin-asset";
 export default {
   resolve: {
     alias: {
+      // 配置好src的别名
       "@/": `${resolve(__dirname, "src")}/`,
     },
   },
   plugins: [
     VitePluginAsset({
-      // 配置静态资源存放的路径（可以解析配置的resolve.alias）
-      path: "@/assets", // or "/src/assets" or ["@/assets", ...]
+      // 配置静态资源存放的路径
+      path: "@/assets",
       // 依赖扫描时忽略的文件夹或文件 支持 glob 语法
       ignores: ["public/**"]
     }),
